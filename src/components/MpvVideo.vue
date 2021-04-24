@@ -8,6 +8,7 @@
          tabindex="1">
         <loading-ring class="loading-ring" :style="{opacity: buffering ? 1 : 0}"/>
         <mpv-embed
+            @error="handleError"
             @property_change="handlePropertyChange"
             ref="mpv" class="canvas-center" :style="{
             backgroundImage: poster === '' ? 'none' : `url(${poster})`,
@@ -18,9 +19,9 @@
                   @mouseleave.native="mouseOverControls=false"
                   @play="play"
                   @pause="pause"
-                  @seek="player.state['percent-pos'] = $event * 100"
+                  @seek="currentTime = $event * duration"
                   @toggleFullscreen="toggleFullscreen"
-                  @toggleMute="player.toggleMute()"
+                  @toggleMute="toggleMute()"
                   :mouse-over-controls="mouseOverControls"
                   :current-time="currentTime"
                   :duration="duration"
@@ -40,9 +41,9 @@ import LoadingRing from "./LoadingRing";
 import Controls from "./Controls";
 import Utils from "../js/utils";
 import MpvEmbed from "@/components/MpvEmbed";
-import net from 'net'
-import xpipe from 'xpipe'
-import path from 'path'
+// import net from 'net'
+// import xpipe from 'xpipe'
+// import path from 'path'
 
 export default {
     name: "MpvVideo",
@@ -120,7 +121,6 @@ export default {
         windowHeight: window.innerHeight,
         mouseOverControls: false,
         icons: {},
-        firstPlayLoaded: false,
         resizeInterval: -1,
         // Video element properties //
         defaultPlaybackRate: 1,
@@ -147,7 +147,6 @@ export default {
         clearInterval(this.resizeInterval);
         clearTimeout(this.moveTimeout);
         clearTimeout(this.showBufferTimeout);
-        this.player?.destroy?.();
         window.removeEventListener('resize', this.windowResize);
         document.removeEventListener('fullscreenchange', this.changeFullscreen);
     },
@@ -160,13 +159,9 @@ export default {
 
         this.init();
 
-        // this.interval = setInterval(() => {
-        //     if (this.player.state === 'buffering')
-        //         this.showBuffering();
-        // }, 1000 / 50);
-        this.resizeInterval = setInterval(() => {
-            this.windowResize();
-        }, 1000 / 20);
+        // this.resizeInterval = setInterval(() => {
+        //     this.windowResize();
+        // }, 1000 / 20);
 
         this.moveTimeout = setTimeout(() => {
             this.hideControls = true;
@@ -181,106 +176,45 @@ export default {
             this.player = this.$refs.mpv;
             console.log('player', this.player);
             this.player.ready.then(() => {
-                this.player.command['load-script'](path.join(__static, 'script.js'));
+                this.player.state.hwdec = 'auto';
                 this.player.observe(
                     'width', 'height', 'duration', 'pause', 'time-pos',
                     'demuxer-cache-idle', 'demuxer-cache-duration', 'paused-for-cache', 'cache-buffering-state', 'cache-speed',
-                    'seeking', 'seekable', 'idle-active',
+                    'seeking', 'seekable', 'idle-active', 'ao-volume', 'ao-mute', 'core-idle',
+                    'demuxer-cache-state/seekable-ranges', 'hwdec-current', 'hwdec', 'eof-reached',
                 );
 
-                setTimeout(() => {
-                    console.log("Connecting... to /mpvsocket")
-                    const client = net.connect(xpipe.eq('/mpvsocket'), () => {
-                        console.log('connected to IPC server')
-                        const command = JSON.stringify(
-                            {'command': ['observe_property', 1, 'demuxer-cache-state'], 'request_id': 101}
-                        )
-                        client.write(Buffer.from(command + '\n'))
-                    })
-
-                    client.on('error', e => console.warn('error', e));
-                    client.on('close', e => console.warn('close', e));
-                    client.on('timeout', e => console.warn('timeout', e));
-
-                    client.on('data', (res) => {
-                        res = res.toString('utf8')
-                        res = res.trim()
-                        res = `[${res}]`
-                        res = res.replace(/(\r\n|\n|\r)/g, ',')
-                        res = JSON.parse(res)
-                        res.forEach((key) => {
-                            console.log('key',key);
-                            if (key.event === 'property-change' && key.name === 'demuxer-cache-state') {
-                                if (key.data !== null) console.log(key.data)
-                            }
-                        })
-                    })
-                }, 1000);
+                // get complex properties:
+                // this.player.command['load-script'](path.join(__static, 'script.js'));
+                // setTimeout(() => {
+                //     console.log("Connecting... to /mpvsocket")
+                //     const client = net.connect(xpipe.eq('/mpvsocket'), () => {
+                //         console.log('connected to IPC server')
+                //         const command = JSON.stringify(
+                //             {'command': ['observe_property', 1, 'demuxer-cache-state'], 'request_id': 101}
+                //         )
+                //         client.write(Buffer.from(command + '\n'))
+                //     })
+                //
+                //     client.on('error', e => console.warn('error', e));
+                //     client.on('close', e => console.warn('close', e));
+                //     client.on('timeout', e => console.warn('timeout', e));
+                //
+                //     client.on('data', (res) => {
+                //         res = res.toString('utf8')
+                //         res = res.trim()
+                //         res = `[${res}]`
+                //         res = res.replace(/(\r\n|\n|\r)/g, ',')
+                //         res = JSON.parse(res)
+                //         res.forEach((key) => {
+                //             if (key.event === 'property-change' && key.name === 'demuxer-cache-state') {
+                //                 if (key.data !== null) console.log(key.data)
+                //             }
+                //         })
+                //     })
+                // }, 1000);
             });
-            // let firstPlay = true, firstPause = true;
-            //
-            // this.player.on('stop', () => {
-            //     this.paused = true;
-            //     this.$emit('pause');
-            //     console.log('⏹')
-            // });
-            // this.player.on('mute', () => {
-            //     this.muted = true;
-            //     console.log('🔇')
-            // });
-            // this.player.on('unmute', () => {
-            //     this.muted = false;
-            //     console.log(`🔊 ${Math.round(this.player.volume)}%`)
-            // });
-            // this.player.on('volumeChange', v => {
-            //     this.volume = v / 100;
-            //     this.$emit('volumechange', v / 100);
-            //     console.log(`${this.player.mute ? '🔇' : '🔊'} ${Math.round(v)}%`)
-            // });
-            // this.player.input.on('rateChange', v => {
-            //     this.playbackRate = v;
-            //     this.$emit('ratechange', v);
-            //     console.log(`🐢 ${v.toFixed(2)}x`)
-            // });
-            // this.player.on('seek', () => {
-            //     this.$emit('seeking');
-            //     this.$emit('seeked');
-            //     console.log(`${this.msToTime(this.player.time)} / ${this.msToTime(this.player.duration)}`)
-            // });
-            // this.player.on('load', () => {
-            //     this.videoResize();
-            //
-            //     this.readyState = HTMLMediaElement.HAVE_CURRENT_DATA;
-            //     this.duration = this.player.duration / 1000;
-            //
-            //     this.$emit('loadedmetadata');
-            //     this.$emit('loadeddata');
-            // });
-            // this.player.on('time', () => {
-            //     let newTime = this.player.time / 1000;
-            //     if (newTime !== this.currentTime) {
-            //         this.dontWatchTime = true;
-            //         this.currentTime = newTime;
-            //     }
-            // });
-            // this.player.on('ended', () => {
-            //     if (this.loop) {
-            //         this.currentTime = 0;
-            //         this.player.once('stop', () => {
-            //             this.player.play();
-            //             this.player.once('pause', this.player.play);
-            //         });
-            //     } else {
-            //         this.$emit('ended');
-            //         this.ended = true;
-            //     }
-            // });
-            //
-            // this.player.on('durationChange', duration => {
-            //     this.$emit('durationchange', duration / 1000);
-            //     this.duration = duration / 1000;
-            // });
-            //
+
             // this.player.on('error', err => {
             //     this.error = 'VLC error' + err;
             //     this.$emit('stalled');
@@ -342,22 +276,59 @@ export default {
                     this.duration = value;
                     break;
                 case 'time-pos':
+                    this.dontWatchTime = true;
                     this.currentTime = value;
                     break;
                 case 'seekable':
                     this.readyState = HTMLMediaElement.HAVE_CURRENT_DATA;
+                    this.$emit('loadedmetadata');
+                    this.$emit('loadeddata');
+                    this.$emit('canplay');
                     break;
                 case 'demuxer-cache-duration':
-                    if (value > 0.1)
+                    if (value > 0.1) {
+                        this.buffering = false;
                         this.readyState = HTMLMediaElement.HAVE_FUTURE_DATA;
+                        this.$emit('canplaythrough');
+                    } else {
+                        this.buffering = true;
+                    }
                     break;
                 case 'demuxer-cache-idle':
                     this.networkState = value ? HTMLMediaElement.NETWORK_IDLE : HTMLMediaElement.NETWORK_LOADING;
+                    break;
+                case 'ao-mute':
+                    this.muted = value;
+                    break;
+                case 'ao-volume':
+                    this.volume = value / 100;
+                    break;
+                case 'seeking':
+                    if (value) {
+                        this.$emit('seeking');
+                        this.seeking = true;
+                    } else if (this.seeking) {
+                        this.seeking = false;
+                        this.$emit('seeked');
+                    }
+                    break;
+                case 'eof-reached':
+                    console.log("eof reached");
+                    if (this.loop) {
+                        this.currentTime = 0;
+                        this.player.state.pause = false;
+                    } else {
+                        this.$emit('ended');
+                        this.ended = true;
+                    }
                     break;
                 default:
                     console.log("Unhandled property change", name, value)
                     break;
             }
+        },
+        handleError(e) {
+            console.warn('error', e);
         },
         showBuffering() {
             this.$emit('waiting');
@@ -419,9 +390,13 @@ export default {
                     this.player.input.rate = rateDown > 0.5 ? Math.round(rateDown * 4) / 4 : rateDown;
                     break;
                 case e.key === 'm':
-                    this.player.mute = !this.player.mute;
+                    this.toggleMute();
                     break;
             }
+        },
+        toggleMute() {
+            let muted = this.player.state['ao-mute'] ?? false;
+            this.player.state['ao-mute'] = !muted;
         },
         async addSubtitles() {
             let {filePath, canceled} = await this.promptSubtitleFile();
@@ -460,7 +435,7 @@ export default {
             this.videoHeight = 0;
             this.currentTime = 0;
             this.error = null;
-            this.firstPlayLoaded = false;
+            this.buffering = true;
 
             if (this.src === '') {
                 this.networkState = HTMLMediaElement.NETWORK_NO_SOURCE;
@@ -468,9 +443,7 @@ export default {
             console.log("Loading src", this.src);
             await this.player.ready;
             this.player.command.loadFile(this.src);
-            this.$on('play', () => {
-                this.firstPlayLoaded = true
-            });
+            this.player.state.pause = !this.autoplay;
             this.$emit('loadstart');
         },
         windowResize() {
@@ -683,17 +656,17 @@ export default {
                 this.$emit('timeupdate', newValue);
             }
             if (newValue !== oldValue && !this.dontWatchTime)
-                this.player.time = this.currentTime * 1000;
+                this.player.state['time-pos'] = this.currentTime;
             else if (this.dontWatchTime)
                 this.dontWatchTime = false;
         },
         playbackRate(newValue, oldValue) {
             if (newValue !== oldValue)
-                this.player.input.rate = this.playbackRate;
+                this.player.state.speed = this.playbackRate;
         },
         volume(newValue, oldValue) {
             if (newValue !== oldValue)
-                this.player.volume = this.volume * 100;
+                this.player.state['ao-volume'] = this.volume * 100;
         },
         width() {
             this.$nextTick(() => this.windowResize());

@@ -45,6 +45,9 @@ export default {
         this.embed = document.createElement('embed');
         this.embed.type = 'application/x-mpvjs';
         this.$refs.player.appendChild(this.embed);
+        this.embed.addEventListener('error', e => {
+            console.warn('error', e);
+        });
         this.embed.addEventListener('message', e => {
             let {type, data} = e.data;
             this.$emit('message', e.data);

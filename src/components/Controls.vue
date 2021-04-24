@@ -7,13 +7,15 @@
                      :style="{backgroundImage: `url(${playIconUrl})`}"></div>
                 <div class="time-info" v-if="bounds.width > 95">
                     <span>{{ msToTime(currentTime * 1000) }}</span>
-                    <span v-if="(bounds.width > 335 || bounds.width < 275 && bounds.width > 100) && !isNaN(duration)"> / {{ msToTime(duration * 1000) }}</span>
+                    <span v-if="(bounds.width > 335 || bounds.width < 275 && bounds.width > 100) && !isNaN(duration)"> / {{
+                            msToTime(duration * 1000)
+                        }}</span>
                 </div>
             </div>
             <div class="controls-right">
                 <div class="volume" v-if="bounds.width > 275">
-                    <input type="range" step="0.01" min="0" max="2"
-                           :value="value" @input="$emit('input', $event.target.value)"
+                    <input type="range" step="0.01" min="0" max="1"
+                           :value="value" @input="emitVolume"
                            class="volume-slider">
                     <div class="volume-icon" @click="$emit('toggleMute')" :style="{
                             backgroundImage: `url(${volumeIconUrl})`,
@@ -92,6 +94,10 @@ export default {
         document.addEventListener('mouseup', this.controlsUp, false);
     },
     methods: {
+        emitVolume(e) {
+            console.log('volume event target value', e.target.value);
+            this.$emit('input', +e.target.value);
+        },
         msToTime(ms, keepMs = false) {
             return Utils.msToTime(ms, keepMs);
         },
@@ -112,6 +118,7 @@ export default {
             // padding 25px
             let x = (e.pageX - this.bounds.left - 25) / (this.bounds.width - 50);
             x = Math.max(0, Math.min(1, x));
+            console.log('seek', x);
             this.$emit('seek', x);
         },
     },
