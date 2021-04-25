@@ -118,7 +118,6 @@ export default {
             // padding 25px
             let x = (e.pageX - this.bounds.left - 25) / (this.bounds.width - 50);
             x = Math.max(0, Math.min(1, x));
-            console.log('seek', x);
             this.$emit('seek', x);
         },
     },

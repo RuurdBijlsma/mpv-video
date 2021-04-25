@@ -8,7 +8,6 @@
          tabindex="1">
         <loading-ring class="loading-ring" :style="{opacity: buffering ? 1 : 0}"/>
         <mpv-embed
-            @error="handleError"
             @property_change="handlePropertyChange"
             ref="mpv" class="canvas-center" :style="{
             backgroundImage: poster === '' ? 'none' : `url(${poster})`,
@@ -177,28 +176,25 @@ export default {
             console.log('player', this.player);
             this.player.ready.then(() => {
                 this.player.state.hwdec = 'auto';
+                this.player.state['ao-mute'] = this.defaultMuted;
                 this.player.observe(
                     'width', 'height', 'duration', 'pause', 'time-pos',
                     'demuxer-cache-idle', 'demuxer-cache-duration', 'paused-for-cache', 'cache-buffering-state', 'cache-speed',
                     'seeking', 'seekable', 'idle-active', 'ao-volume', 'ao-mute', 'core-idle',
-                    'demuxer-cache-state/seekable-ranges', 'hwdec-current', 'hwdec', 'eof-reached',
+                    'hwdec-current', 'hwdec', 'eof-reached',
                 );
 
-                // get complex properties:
+                // get complex properties: (only seems to work on fresh electron start)
                 // this.player.command['load-script'](path.join(__static, 'script.js'));
                 // setTimeout(() => {
-                //     console.log("Connecting... to /mpvsocket")
+                //     console.log("Connecting to IPC...");
                 //     const client = net.connect(xpipe.eq('/mpvsocket'), () => {
                 //         console.log('connected to IPC server')
                 //         const command = JSON.stringify(
-                //             {'command': ['observe_property', 1, 'demuxer-cache-state'], 'request_id': 101}
+                //             { 'command': ['observe_property', 1, 'demuxer-cache-state'], 'request_id': 100 }
                 //         )
                 //         client.write(Buffer.from(command + '\n'))
                 //     })
-                //
-                //     client.on('error', e => console.warn('error', e));
-                //     client.on('close', e => console.warn('close', e));
-                //     client.on('timeout', e => console.warn('timeout', e));
                 //
                 //     client.on('data', (res) => {
                 //         res = res.toString('utf8')
@@ -207,54 +203,14 @@ export default {
                 //         res = res.replace(/(\r\n|\n|\r)/g, ',')
                 //         res = JSON.parse(res)
                 //         res.forEach((key) => {
+                //             console.log("key", key);
                 //             if (key.event === 'property-change' && key.name === 'demuxer-cache-state') {
                 //                 if (key.data !== null) console.log(key.data)
                 //             }
                 //         })
                 //     })
-                // }, 1000);
+                // }, 1000)
             });
-
-            // this.player.on('error', err => {
-            //     this.error = 'VLC error' + err;
-            //     this.$emit('stalled');
-            //     this.$emit('error', ['VLC error', err]);
-            // });
-            //
-            // this.player.on('mediaChange', () => {
-            //     firstPlay = true;
-            //     firstPause = true;
-            //     let onStateChange = newState => {
-            //         if (newState === 'play' || newState === 'pause') {
-            //             this.player.off('stateChange', onStateChange);
-            //             this.readyState = HTMLMediaElement.HAVE_FUTURE_DATA;
-            //             this.$emit('canplay');
-            //             this.readyState = HTMLMediaElement.HAVE_ENOUGH_DATA;
-            //             this.$emit('canplaythrough');
-            //             this.networkState = HTMLMediaElement.NETWORK_IDLE;
-            //         }
-            //     }
-            //     this.player.once('frameReady', () => {
-            //         if (!this.autoplay) {
-            //             this.player.mute = this.defaultMuted;
-            //             this.player.pause();
-            //             this.player.once('pause', () => this.preventStatusUpdate = false);
-            //         }
-            //     });
-            //     this.player.on('stateChange', onStateChange);
-            // });
-            //
-            // let currentState = this.player.state;
-            // this.player.on('stateChange', newState => {
-            //     console.log('new state', newState)
-            //     if (currentState === 'buffering' && (newState === 'play' || newState === 'pause')) {
-            //         this.$emit('playing');
-            //     }
-            //     currentState = newState;
-            //     if (newState === 'buffering')
-            //         this.showBuffering();
-            // });
-
             this.loadSrc();
         },
         handlePropertyChange({name, value}) {
@@ -294,9 +250,6 @@ export default {
                         this.buffering = true;
                     }
                     break;
-                case 'demuxer-cache-idle':
-                    this.networkState = value ? HTMLMediaElement.NETWORK_IDLE : HTMLMediaElement.NETWORK_LOADING;
-                    break;
                 case 'ao-mute':
                     this.muted = value;
                     break;
@@ -322,13 +275,34 @@ export default {
                         this.ended = true;
                     }
                     break;
+                case 'demuxer-cache-idle':
+                    this.networkState = value ? HTMLMediaElement.NETWORK_IDLE : HTMLMediaElement.NETWORK_LOADING;
+                    this.checkError();
+                    break;
+                case 'idle-active':
+                    this.checkError();
+                    break;
+                case 'core-idle':
+                    this.checkError();
+                    break;
+                case 'paused-for-cache':
+                    this.buffering = value;
+                    break;
                 default:
                     console.log("Unhandled property change", name, value)
                     break;
             }
         },
-        handleError(e) {
-            console.warn('error', e);
+        checkError() {
+            // if no file loaded, no file is playing but a src is set
+            if (this.player.state['idle-active'] &&
+                this.player.state['core-idle'] &&
+                this.src !== ''
+            ) {
+                // WARN: not accurate about can't load actually
+                console.warn(`Can't load '${this.src}'`)
+                this.error = "Can't load: " + this.src;
+            }
         },
         showBuffering() {
             this.$emit('waiting');

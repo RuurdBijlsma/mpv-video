@@ -34,7 +34,6 @@ export default {
                 return true;
             },
         });
-        console.log(this.state);
         this.command = new Proxy({}, {
             get(target, property, receiver) {
                 console.log("command get", {target, property, receiver})
@@ -50,12 +49,12 @@ export default {
         });
         this.embed.addEventListener('message', e => {
             let {type, data} = e.data;
-            this.$emit('message', e.data);
-            this.$emit(type, data);
             if (type === 'property_change') {
                 let {name, value} = data;
                 this.hiddenState[name] = value;
             }
+            this.$emit('message', e.data);
+            this.$emit(type, data);
         });
     },
     methods: {
