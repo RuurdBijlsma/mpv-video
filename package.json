@@ -2,27 +2,25 @@
   "name": "mpv-video",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "electron:build": "vue-cli-service electron:build",
-    "electron:serve": "cross-env MPVJS_TERMINAL=1 MPVJS_VERBOSE=1 vue-cli-service electron:serve",
-    "postinstall": "electron-builder install-app-deps",
-    "postuninstall": "electron-builder install-app-deps"
-  },
-  "main": "background.js",
+  "description": "Vue component containing embedded MPV player, can be used in Electron.",
+  "keywords": [
+    "mpv",
+    "video",
+    "player",
+    "electron",
+    "vue"
+  ],
+  "author": "Ruurd Bijlsma <ruurd@bijlsma.dev>",
+  "homepage": "https://github.com/RuurdBijlsma/mpv-video#readme",
+  "repository": "https://github.com/RuurdBijlsma/mpv-video",
+  "bugs": "https://github.com/RuurdBijlsma/mpv-video/issues",
+  "license": "MIT",
+  "main": "src/VlcVideo.vue",
   "dependencies": {
-    "core-js": "^3.6.5",
-    "vue": "^2.6.11",
-    "xpipe": "^1.0.5"
+    "mpv.js": "^0.3.0"
   },
-  "devDependencies": {
-    "cross-env": "^7.0.3",
-    "@vue/cli-plugin-babel": "~4.5.0",
-    "@vue/cli-service": "~4.5.0",
-    "electron": "^11.0.0",
-    "electron-devtools-installer": "^3.1.0",
-    "vue-cli-plugin-electron-builder": "*",
-    "vue-template-compiler": "^2.6.11"
+  "peerDependencies": {
+    "electron": "^11.4.4",
+    "vue": "^2.6.11"
   }
 }

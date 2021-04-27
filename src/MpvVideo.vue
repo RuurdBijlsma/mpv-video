@@ -6,6 +6,11 @@
          @keydown="handleKey"
          @wheel="handleScroll"
          tabindex="1">
+        <media-control
+            :paused="paused"
+            @play="play"
+            @pause="pause"
+            class="media-control"/>
         <loading-ring class="loading-ring" :style="{opacity: buffering ? 1 : 0}"/>
         <mpv-embed
             @property_change="handlePropertyChange"
@@ -38,15 +43,13 @@
 
 import LoadingRing from "./LoadingRing";
 import Controls from "./Controls";
-import Utils from "../js/utils";
-import MpvEmbed from "@/components/MpvEmbed";
-// import net from 'net'
-// import xpipe from 'xpipe'
-// import path from 'path'
+import * as utils from "./js/utils";
+import MpvEmbed from "./MpvEmbed";
+import MediaControl from "./MediaControl";
 
 export default {
     name: "MpvVideo",
-    components: {MpvEmbed, Controls, LoadingRing},
+    components: {MediaControl, MpvEmbed, Controls, LoadingRing},
     props: {
         // ------- HTML Video properties -------- //
         autoplay: {
@@ -121,6 +124,7 @@ export default {
         mouseOverControls: false,
         icons: {},
         resizeInterval: -1,
+        pressedPlay: false,
         // Video element properties //
         defaultPlaybackRate: 1,
         playbackRate: 1,
@@ -150,17 +154,58 @@ export default {
         document.removeEventListener('fullscreenchange', this.changeFullscreen);
     },
     async mounted() {
+        this.player = this.$refs.mpv;
+        console.log('player', this.player);
+        this.player.ready.then(() => {
+            this.player.command['show-progress']();
+            this.player.state.hwdec = 'auto';
+            this.player.state['ao-mute'] = this.defaultMuted;
+            this.player.observe(
+                'width', 'height', 'duration', 'pause', 'time-pos',
+                'demuxer-cache-idle', 'demuxer-cache-duration', 'paused-for-cache',
+                'seeking', 'seekable', 'idle-active', 'ao-volume', 'ao-mute', 'core-idle',
+                'hwdec-current', 'eof-reached', 'track-list', 'demuxer-cache-state/seekable-ranges/start',
+                // 'cache-speed', 'cache-buffering-state',
+            );
+
+            // get complex properties: (only seems to work on fresh electron start)
+            // this.player.command['load-script'](path.join(__static, 'script.js'));
+            // setTimeout(() => {
+            //     console.log("Connecting to IPC...");
+            //     const client = net.connect(xpipe.eq('/mpvsocket'), () => {
+            //         console.log('connected to IPC server')
+            //         const command = JSON.stringify(
+            //             {'command': ['observe_property', 1, 'demuxer-cache-state/seekable-ranges/start'], 'request_id': 100}
+            //         )
+            //         client.write(Buffer.from(command + '\n'))
+            //     })
+            //
+            //     client.on('data', (res) => {
+            //         res = res.toString('utf8')
+            //         res = res.trim()
+            //         res = `[${res}]`
+            //         res = res.replace(/(\r\n|\n|\r)/g, ',')
+            //         res = JSON.parse(res)
+            //         res.forEach((key) => {
+            //             console.log("key", key);
+            //             if (key.event === 'property-change' && key.name === 'demuxer-cache-state') {
+            //                 if (key.data !== null) console.log(key.data)
+            //             }
+            //         })
+            //     })
+            // }, 500)
+        });
         let icons = ['pause', 'play_arrow', 'stop', 'volume_up', 'volume_down', 'volume_off', 'volume_off', 'info', 'info'];
-        Promise.all(icons.map(Utils.nativeIcon))
+        Promise.all(icons.map(utils.nativeIcon))
             .then(result => {
                 result.forEach((icon, i) => this.icons[icons[i]] = icon);
             });
 
-        this.init();
-
         // this.resizeInterval = setInterval(() => {
         //     this.windowResize();
         // }, 1000 / 20);
+        // setTimeout(()=>this.loadSrc(), 1000);
+        this.loadSrc();
 
         this.moveTimeout = setTimeout(() => {
             this.hideControls = true;
@@ -171,56 +216,15 @@ export default {
         document.addEventListener('fullscreenchange', this.changeFullscreen, false);
     },
     methods: {
-        init() {
-            this.player = this.$refs.mpv;
-            console.log('player', this.player);
-            this.player.ready.then(() => {
-                this.player.state.hwdec = 'auto';
-                this.player.state['ao-mute'] = this.defaultMuted;
-                this.player.observe(
-                    'width', 'height', 'duration', 'pause', 'time-pos',
-                    'demuxer-cache-idle', 'demuxer-cache-duration', 'paused-for-cache', 'cache-buffering-state', 'cache-speed',
-                    'seeking', 'seekable', 'idle-active', 'ao-volume', 'ao-mute', 'core-idle',
-                    'hwdec-current', 'hwdec', 'eof-reached',
-                );
-
-                // get complex properties: (only seems to work on fresh electron start)
-                // this.player.command['load-script'](path.join(__static, 'script.js'));
-                // setTimeout(() => {
-                //     console.log("Connecting to IPC...");
-                //     const client = net.connect(xpipe.eq('/mpvsocket'), () => {
-                //         console.log('connected to IPC server')
-                //         const command = JSON.stringify(
-                //             { 'command': ['observe_property', 1, 'demuxer-cache-state'], 'request_id': 100 }
-                //         )
-                //         client.write(Buffer.from(command + '\n'))
-                //     })
-                //
-                //     client.on('data', (res) => {
-                //         res = res.toString('utf8')
-                //         res = res.trim()
-                //         res = `[${res}]`
-                //         res = res.replace(/(\r\n|\n|\r)/g, ',')
-                //         res = JSON.parse(res)
-                //         res.forEach((key) => {
-                //             console.log("key", key);
-                //             if (key.event === 'property-change' && key.name === 'demuxer-cache-state') {
-                //                 if (key.data !== null) console.log(key.data)
-                //             }
-                //         })
-                //     })
-                // }, 1000)
-            });
-            this.loadSrc();
-        },
         handlePropertyChange({name, value}) {
             switch (name) {
                 case 'pause':
                     this.paused = value;
-                    if (value)
+                    if (value) {
                         this.$emit('pause');
-                    else
+                    } else {
                         this.$emit('play');
+                    }
                     break;
                 case 'width':
                     this.videoWidth = value;
@@ -266,6 +270,9 @@ export default {
                     }
                     break;
                 case 'eof-reached':
+                    // For some reason eof-reached happens when loading a file initially
+                    if (this.duration - this.currentTime > this.duration / 10)
+                        return;
                     console.log("eof reached");
                     if (this.loop) {
                         this.currentTime = 0;
@@ -329,7 +336,7 @@ export default {
             }
         },
         msToTime(ms, keepMs = false) {
-            return Utils.msToTime(ms, keepMs);
+            return utils.msToTime(ms, keepMs);
         },
         handleScroll(e) {
             if (!this.enableScroll)
@@ -375,7 +382,7 @@ export default {
         async addSubtitles() {
             let {filePath, canceled} = await this.promptSubtitleFile();
             if (!canceled) {
-                this.player.subtitles.load(filePath);
+                this.player.command['sub-add'](filePath);
             }
         },
         async promptSubtitleFile() {
@@ -398,7 +405,7 @@ export default {
             return {canceled, filePath: filePaths[0]};
         },
         async loadSrc() {
-            // this.player.stop();
+            this.player.command.stop();
 
             this.preventStatusUpdate = true;
             this.duration = NaN;
@@ -413,11 +420,16 @@ export default {
 
             if (this.src === '') {
                 this.networkState = HTMLMediaElement.NETWORK_NO_SOURCE;
+                this.buffering = false;
+                return;
             }
             console.log("Loading src", this.src);
             await this.player.ready;
             this.player.command.loadFile(this.src);
-            this.player.state.pause = !this.autoplay;
+            this.$once('canplaythrough', () => {
+                this.player.state.pause = !this.autoplay && !this.pressedPlay;
+                this.pressedPlay = false;
+            })
             this.$emit('loadstart');
         },
         windowResize() {
@@ -441,7 +453,7 @@ export default {
         },
         // ------------ HTMLVideoElement methods ---------- //
         addTextTrack(filePath) {
-            this.player.subtitles.load(filePath);
+            this.player.command['sub-add'](filePath);
         },
         captureStream() {
             console.warn("Not implemented");
@@ -450,29 +462,36 @@ export default {
             return 'probably';
         },
         fastSeek(t) {
-            this.player.time = t * 1000;
+            this.currentTime = t;
         },
         load() {
-            // todo this doesnt work well
             if (this.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
                 this.$emit('abort');
             } else {
                 this.$emit('emptied');
             }
-            this.player.destroy();
-            this.init();
+            this.loadSrc();
         },
         async play() {
             if (this.src === '')
                 return;
             this.player.state.pause = false;
-            return new Promise(resolve => this.player.$once('play', resolve));
+            this.$nextTick(() => {
+                console.log("called play()", this.readyState)
+                if (this.readyState === HTMLMediaElement.HAVE_NOTHING) {
+                    console.log("READY STATE was have nothing")
+                    this.pressedPlay = true;
+                }
+            })
         },
         pause() {
             this.player.state.pause = true;
         },
-        seekToNextFrame(n = 1) {
-            this.player.time += (1000 * n) / this.player.input.fps;
+        seekToNextFrame() {
+            this.player.command('frame-step')();
+        },
+        seekToPreviousFrame() {
+            this.player.command('frame-back-step')();
         },
     },
     computed: {
@@ -655,6 +674,7 @@ export default {
             this.$nextTick(() => this.windowResize());
         },
         src() {
+            console.log("src change")
             this.loadSrc()
         },
     },
@@ -666,6 +686,8 @@ export default {
     display: inline-block;
     --width: 100px;
     --height: 50px;
+    min-width: 100px;
+    min-height: 50px;
     position: relative;
 }
 

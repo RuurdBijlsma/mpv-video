@@ -36,7 +36,6 @@ export default {
         });
         this.command = new Proxy({}, {
             get(target, property, receiver) {
-                console.log("command get", {target, property, receiver})
                 return (...args) => executeCommand(property.toLowerCase(), ...args);
             },
         });
@@ -62,7 +61,6 @@ export default {
             names.forEach(name => this.postMessage('observe_property', name));
         },
         setProperty(property, value) {
-            console.log("SETTING PROPERTY", property, value);
             this.postMessage('set_property', {name: property, value});
         },
         executeCommand(...params) {

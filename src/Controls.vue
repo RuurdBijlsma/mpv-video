@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import Utils from "../js/utils";
+import * as utils from "./js/utils";
 
 export default {
     name: "Controls",
@@ -95,11 +95,10 @@ export default {
     },
     methods: {
         emitVolume(e) {
-            console.log('volume event target value', e.target.value);
             this.$emit('input', +e.target.value);
         },
         msToTime(ms, keepMs = false) {
-            return Utils.msToTime(ms, keepMs);
+            return utils.msToTime(ms, keepMs);
         },
         controlsDown(e) {
             this.mouseDown = true;
@@ -124,11 +123,11 @@ export default {
     computed: {
         volumeIconUrl() {
             let icon = this.muted ? 'volume_off' : this.volume < 1 ? 'volume_down' : 'volume_up';
-            return Utils.iconUrl(icon);
+            return utils.iconUrl(icon);
         },
         playIconUrl() {
             let icon = this.paused ? 'play_arrow' : 'pause';
-            return Utils.iconUrl(icon);
+            return utils.iconUrl(icon);
         },
     }
 }
