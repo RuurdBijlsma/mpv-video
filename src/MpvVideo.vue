@@ -4,7 +4,6 @@
          @mousemove="moveOverPlayer"
          ref="player"
          @keydown="handleKey"
-         @wheel="handleScroll"
          tabindex="1">
         <media-control
             :paused="paused"
@@ -95,22 +94,6 @@ export default {
             default: false,
         },
         coverPoster: {
-            type: Boolean,
-            default: false,
-        },
-        dark: {
-            type: Boolean,
-            default: false,
-        },
-        enableStatus: {
-            type: Boolean,
-            default: false,
-        },
-        enableScroll: {
-            type: Boolean,
-            default: false,
-        },
-        enableKeys: {
             type: Boolean,
             default: false,
         },
@@ -347,43 +330,6 @@ export default {
         },
         msToTime(ms, keepMs = false) {
             return utils.msToTime(ms, keepMs);
-        },
-        handleScroll(e) {
-            if (!this.enableScroll)
-                return;
-            this.player.volume -= e.deltaY / 20;
-        },
-        handleKey(e) {
-            if (!this.enableKeys)
-                return;
-            switch (true) {
-                case e.key === ' ':
-                    this.player.togglePause();
-                    break;
-                case e.key === 'ArrowRight':
-                    this.player.time += 10000;
-                    break;
-                case e.key === 'ArrowLeft':
-                    this.player.time -= 10000;
-                    break;
-                case e.key === 'ArrowUp':
-                    this.player.volume += 5;
-                    break;
-                case e.key === 'ArrowDown':
-                    this.player.volume -= 5;
-                    break;
-                case e.key === '=':
-                    let rateUp = this.player.input.rate * 1.25;
-                    this.player.input.rate = rateUp > 0.5 ? Math.round(rateUp * 4) / 4 : rateUp;
-                    break;
-                case e.key === '-':
-                    let rateDown = this.player.input.rate / 1.25;
-                    this.player.input.rate = rateDown > 0.5 ? Math.round(rateDown * 4) / 4 : rateDown;
-                    break;
-                case e.key === 'm':
-                    this.toggleMute();
-                    break;
-            }
         },
         toggleMute() {
             let muted = this.player.state['ao-mute'] ?? false;
