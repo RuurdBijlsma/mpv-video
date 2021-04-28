@@ -15,7 +15,7 @@
   "repository": "https://github.com/RuurdBijlsma/mpv-video",
   "bugs": "https://github.com/RuurdBijlsma/mpv-video/issues",
   "license": "MIT",
-  "main": "src/VlcVideo.vue",
+  "main": "src/MpvVideo.vue",
   "peerDependencies": {
     "electron": "^11.4.4",
     "vue": "^2.6.11"
