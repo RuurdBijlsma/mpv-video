@@ -3,7 +3,6 @@
          :style="mainStyle"
          @mousemove="moveOverPlayer"
          ref="player"
-         @keydown="handleKey"
          tabindex="1">
         <media-control
             :paused="paused"
