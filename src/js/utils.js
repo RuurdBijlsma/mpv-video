@@ -1,31 +1,12 @@
 import {app, nativeImage} from "electron";
-import path from "path";
-import {getPluginEntry} from "mpv.js";
-import fs from "fs";
-
-export function installMpv(app) {
-    const pluginDir = path.resolve(path.join(path.dirname(require.resolve("mpv.js")), "build", "Release"));
-    const filePath = path.join(pluginDir, 'mpvjs.node');
-    const pluginEntry = getPluginEntry(pluginDir);
-    console.log({
-        pluginDir,
-        filePath,
-        exists: fs.existsSync(filePath),
-        pluginEntry
-    });
-    if (process.platform !== "linux")
-        process.chdir(pluginDir);
-    app.commandLine.appendSwitch("no-sandbox");
-    app.commandLine.appendSwitch("ignore-gpu-blacklist");
-    app.commandLine.appendSwitch("register-pepper-plugins", pluginEntry);
-}
 
 export function msToTime(ms, keepMs = false) {
     if (isNaN(ms))
         return `00:00` + keepMs ? '.00' : '';
     let hms = new Date(ms).toISOString().substr(11, keepMs ? 11 : 8).replace(/^0+/, '');
     hms = hms.startsWith(':') ? hms.substr(1) : hms;
-    return hms.startsWith('00') ? hms.substr(1) : hms;
+    // hms = hms.startsWith('00') ? hms.substr(1) : hms;
+    return hms.startsWith('0') ? hms.substr(1) : hms;
 }
 
 export function iconUrl(icon) {

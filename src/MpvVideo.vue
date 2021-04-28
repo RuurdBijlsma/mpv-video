@@ -12,12 +12,21 @@
             @pause="pause"
             class="media-control"/>
         <loading-ring class="loading-ring" :style="{opacity: buffering ? 1 : 0}"/>
-        <mpv-embed
-            @property_change="handlePropertyChange"
-            ref="mpv" class="canvas-center" :style="{
-            backgroundImage: poster === '' ? 'none' : `url(${poster})`,
-            backgroundSize: coverPoster ? 'cover' : 'contain',
-        }"/>
+        <div
+            class="canvas-center" :style="{
+                backgroundImage: poster === '' ? 'none' : `url(${poster})`,
+                backgroundSize: coverPoster ? 'cover' : 'contain',
+            }"
+        >
+            <mpv-embed
+                :style="{
+                    opacity: poster === '' || firstPlayLoaded ? 1 : 0,
+                }"
+                class="embed"
+                ref="mpv"
+                @property_change="handlePropertyChange"
+            />
+        </div>
         <controls v-if="controls"
                   @mouseenter.native="mouseOverControls=true"
                   @mouseleave.native="mouseOverControls=false"
@@ -124,6 +133,7 @@ export default {
         mouseOverControls: false,
         icons: {},
         resizeInterval: -1,
+        firstPlayLoaded: false,
         pressedPlay: false,
         // Video element properties //
         defaultPlaybackRate: 1,
@@ -417,6 +427,7 @@ export default {
             this.currentTime = 0;
             this.error = null;
             this.buffering = true;
+            this.firstPlayLoaded = false;
 
             if (this.src === '') {
                 this.networkState = HTMLMediaElement.NETWORK_NO_SOURCE;
@@ -426,6 +437,7 @@ export default {
             console.log("Loading src", this.src);
             await this.player.ready;
             this.player.command.loadFile(this.src);
+            this.$once('play', () => this.firstPlayLoaded = true);
             this.$once('canplaythrough', () => {
                 this.player.state.pause = !this.autoplay && !this.pressedPlay;
                 this.pressedPlay = false;
@@ -736,5 +748,10 @@ export default {
 
 .content >>> div > b {
     user-select: none;
+}
+
+.embed {
+    width: 100%;
+    height: 100%
 }
 </style>
