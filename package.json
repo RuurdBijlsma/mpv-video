@@ -1,6 +1,6 @@
 {
   "name": "mpv-video",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Vue component containing embedded MPV player, can be used in Electron.",
   "keywords": [
