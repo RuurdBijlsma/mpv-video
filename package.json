@@ -16,10 +16,13 @@
   "bugs": "https://github.com/RuurdBijlsma/mpv-video/issues",
   "license": "MIT",
   "main": "src/VlcVideo.vue",
-  "dependencies": {
-  },
   "peerDependencies": {
     "electron": "^11.4.4",
     "vue": "^2.6.11"
+  },
+  "dependencies": {
+    "decompress-targz": "^4.1.1",
+    "node-fetch": "^2.6.1",
+    "decompress": "^4.2.1"
   }
 }
