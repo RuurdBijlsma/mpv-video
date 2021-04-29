@@ -12,13 +12,13 @@
         <loading-ring class="loading-ring" :style="{opacity: buffering ? 1 : 0}"/>
         <div
             class="canvas-center" :style="{
-                backgroundImage: poster === '' ? 'none' : `url(${poster})`,
+                backgroundImage: !isNaN(duration) || poster === '' ? 'none' : `url(${poster})`,
                 backgroundSize: coverPoster ? 'cover' : 'contain',
             }"
         >
             <mpv-embed
                 :style="{
-                    opacity: poster === '' || firstPlayLoaded ? 1 : 0,
+                    opacity: !isNaN(duration) || poster === '' || firstPlayLoaded ? 1 : 0,
                 }"
                 class="embed"
                 ref="mpv"
@@ -96,6 +96,10 @@ export default {
             type: Boolean,
             default: false,
         },
+        disableAutoHideCursor: {
+            type: Boolean,
+            default: false,
+        },
     },
     data: () => ({
         computedBounds: {width: 0, height: 0},
@@ -117,6 +121,7 @@ export default {
         resizeInterval: -1,
         firstPlayLoaded: false,
         pressedPlay: false,
+        fullscreen: false,
         // Video element properties //
         defaultPlaybackRate: 1,
         playbackRate: 1,
@@ -461,7 +466,7 @@ export default {
             let style = {
                 '--width': `${this.bounds.width}px`,
                 '--height': `${this.bounds.height}px`,
-                cursor: this.hideControls && !this.mouseOverControls && !this.paused ? 'none' : 'auto',
+                cursor: this.hideControls && !this.mouseOverControls && !this.disableAutoHideCursor && !this.paused ? 'none' : 'auto',
             }
             if (this.height === 'auto')
                 style.height = this.bounds.height + 'px';
@@ -606,6 +611,12 @@ export default {
         },
     },
     watch: {
+        muted(n, o) {
+            console.log("muted change", n, o, 'this.muted', this.muted, 'this.player.mute', this.player.mute);
+            if (n !== o) {
+                this.player.state['ao-mute'] = this.muted;
+            }
+        },
         currentTime(newValue, oldValue) {
             if (newValue !== oldValue) {
                 this.$emit('timeupdate', newValue);
