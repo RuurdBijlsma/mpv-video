@@ -226,6 +226,7 @@ export default {
                     break;
                 case 'duration':
                     this.duration = value;
+                    this.$emit('durationchange', this.duration);
                     break;
                 case 'time-pos':
                     this.dontWatchTime = true;
@@ -244,6 +245,7 @@ export default {
                         this.$emit('canplaythrough');
                     } else {
                         this.buffering = true;
+                        this.$emit('playing');
                     }
                     break;
                 case 'ao-mute':
@@ -251,6 +253,7 @@ export default {
                     break;
                 case 'ao-volume':
                     this.volume = value / 100;
+                    this.$emit('volumechange', this.volume);
                     break;
                 case 'seeking':
                     if (value) {
@@ -372,6 +375,7 @@ export default {
             this.currentTime = 0;
             this.error = null;
             this.buffering = true;
+            this.$emit('waiting');
             this.firstPlayLoaded = false;
 
             if (this.src === '') {
@@ -384,6 +388,7 @@ export default {
             this.player.command.loadFile(this.src);
             this.$once('play', () => this.firstPlayLoaded = true);
             this.$once('canplaythrough', () => {
+                this.$emit('playing');
                 this.player.state.pause = !this.autoplay && !this.pressedPlay;
                 this.pressedPlay = false;
             })
