@@ -29,6 +29,7 @@ Demo Electron app can be found here: https://github.com/RuurdBijlsma/mpv-video-d
 
 * Any codec supported in mpv is supported in this player.
 * Custom props
+    * `start-time` set start time of video (place in seconds the video initially loads into)
     * `cover-poster` determines if the poster should cover the player or be contained within the player
 
 ## Differences with `<video>`

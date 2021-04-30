@@ -88,6 +88,10 @@ export default {
             default: false,
         },
         // ---------- Miscellaneous -------- //
+        startTime: {
+            type: Number,
+            default: 0,
+        },
         hideBuffering: {
             type: Boolean,
             default: false,
@@ -611,6 +615,9 @@ export default {
         },
     },
     watch: {
+        startTime() {
+            this.player.state.start = this.startTime;
+        },
         muted(n, o) {
             console.log("muted change", n, o, 'this.muted', this.muted, 'this.player.mute', this.player.mute);
             if (n !== o) {
