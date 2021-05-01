@@ -161,6 +161,7 @@ export default {
             this.player.command['show-progress']();
             this.player.state.hwdec = 'auto';
             this.player.state.start = this.startTime;
+            this.player.state.pause = !this.autoplay;
             this.player.state['ao-mute'] = this.defaultMuted;
             this.player.observe(
                 'width', 'height', 'duration', 'pause', 'time-pos',
