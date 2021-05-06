@@ -158,6 +158,7 @@ export default {
         this.player = this.$refs.mpv;
         console.log('player', this.player);
         this.player.ready.then(() => {
+            this.setVolume();
             this.player.command['show-progress']();
             this.player.state.hwdec = 'auto';
             this.player.state.start = this.startTime;
@@ -207,8 +208,8 @@ export default {
         // this.resizeInterval = setInterval(() => {
         //     this.windowResize();
         // }, 1000 / 20);
-        // setTimeout(()=>this.loadSrc(), 1000);
         this.loadSrc();
+        // this.loadSrc();
 
         this.moveTimeout = setTimeout(() => {
             this.hideControls = true;
@@ -263,7 +264,6 @@ export default {
                     this.muted = value;
                     break;
                 case 'ao-volume':
-                    this.volume = value / 100;
                     this.$emit('volumechange', this.volume);
                     break;
                 case 'seeking':
@@ -399,6 +399,9 @@ export default {
             this.player.command.loadFile(this.src);
             this.$once('play', () => this.firstPlayLoaded = true);
             this.$once('canplaythrough', () => {
+                if (this.player.state.start) {
+                    this.player.state['time-pos'] = this.player.state.start;
+                }
                 this.$emit('playing');
                 this.player.state.pause = !this.autoplay && !this.pressedPlay;
                 this.pressedPlay = false;
@@ -465,6 +468,9 @@ export default {
         },
         seekToPreviousFrame() {
             this.player.command('frame-back-step')();
+        },
+        setVolume() {
+            this.player.state['ao-volume'] = this.volume * 100;
         },
     },
     computed: {
@@ -621,7 +627,6 @@ export default {
             this.player.state.start = this.startTime;
         },
         muted(n, o) {
-            console.log("muted change", n, o, 'this.muted', this.muted, 'this.player.mute', this.player.mute);
             if (n !== o) {
                 this.player.state['ao-mute'] = this.muted;
             }
@@ -640,8 +645,7 @@ export default {
                 this.player.state.speed = this.playbackRate;
         },
         volume(newValue, oldValue) {
-            if (newValue !== oldValue)
-                this.player.state['ao-volume'] = this.volume * 100;
+            this.setVolume();
         },
         width() {
             this.$nextTick(() => this.windowResize());
